@@ -14,6 +14,8 @@ import java.sql.SQLException;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.sql.PreparedStatement;
+import java.sql.Date;
 
 /**
  *
@@ -22,6 +24,8 @@ import java.util.logging.Logger;
 public class GestorClubJDBC implements IClubOracleBD{
 
     private Connection conn;
+    
+    private PreparedStatement psInsertJugador;
 
     public GestorClubJDBC() throws GestorBDClub{
         this("clubDB.properties");
@@ -71,10 +75,41 @@ public class GestorClubJDBC implements IClubOracleBD{
             throw new GestorBDClub("Error en tancar la connexió.\n", ex);
         }
     }
+    
+    @Override
+    public void confirmarCanvis() throws GestorBDClub{
+        try {
+            conn.commit();
+        } catch (SQLException ex) {
+            throw new GestorBDClub("Error en confirmar canvis", ex);
+        }
+    }
 
     @Override
     public void afegirJugador(Jugador j) throws GestorBDClub {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (psInsertJugador == null) {
+            try {
+                psInsertJugador = conn.prepareStatement("INSERT INTO jugador (nom, cognoms, data_naix, sexe, adreça, foto, any_fi_revisió_mèdica, IBAN, idLegal) "
+                                                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            } catch (SQLException ex) {
+                throw new GestorBDClub("Error en preparar sentència psInsertJugador", ex);
+            }
+        }
+        try {
+            psInsertJugador.setString(1, j.getNom());
+            psInsertJugador.setString(2, j.getCognom());
+            psInsertJugador.setDate(3, new java.sql.Date(j.getData_naix().getTime()));
+            psInsertJugador.setString(4, j.getSexeString());
+            psInsertJugador.setString(5, j.getAdresa());
+            psInsertJugador.setString(6, j.getFoto());
+            psInsertJugador.setInt(7, j.getAny_fi_revisio_medica());
+            psInsertJugador.setString(8, j.getIban());
+            psInsertJugador.setString(9, j.getIdLegal());
+            
+            psInsertJugador.executeUpdate();
+        } catch (SQLException ex) {
+            throw new GestorBDClub("Error en intentar inserir el Jugador " + j.getNom(), ex);
+        }
     }
 
     @Override
