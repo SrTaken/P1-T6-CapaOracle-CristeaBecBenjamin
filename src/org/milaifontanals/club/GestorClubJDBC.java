@@ -332,8 +332,8 @@ public class GestorClubJDBC implements IClubOracleBD{
             }
         }
         try {
-            psInsertMembre.setInt(1, m.getE().getId());
-            psInsertMembre.setInt(2, m.getJ().getId());
+            psInsertMembre.setInt(1, m.getE());
+            psInsertMembre.setInt(2, m.getJ());
             psInsertMembre.setString(3, m.getTitular_convidat()+"");
             psInsertMembre.executeUpdate();
         } catch (SQLException ex) {
@@ -527,7 +527,7 @@ public class GestorClubJDBC implements IClubOracleBD{
 
 
     @Override
-    public List<Membre> obtenirLlistaMembre(Equip e) throws GestorBDClub {
+    public List<Membre> obtenirLlistaMembre(int e) throws GestorBDClub {
         List<Membre> membres = new ArrayList<>();
         Statement stmt = null;
         try {
@@ -535,33 +535,19 @@ public class GestorClubJDBC implements IClubOracleBD{
             stmt = conn.createStatement();
 
             // Consulta SQL para obtener los miembros por el id del equipo
-            String query = "SELECT j.id AS jugador_id, j.nom, j.cognoms, j.sexe, j.data_naix, j.idLegal, j.IBAN, j.adreça, j.foto, j.any_fi_revisió_mèdica, "
+            String query = "SELECT j.id AS jugador_id,"
                          + "m.titular_convidat "
                          + "FROM membre m "
                          + "JOIN jugador j ON m.jugador_id = j.id "
-                         + "WHERE m.equip_id = " + e.getId();
+                         + "WHERE m.equip_id = " + e;
 
             // Ejecutar la consulta SQL
             ResultSet rs = stmt.executeQuery(query);
 
             // Procesar el resultado de la consulta
             while (rs.next()) {
-                // Crear un objeto Jugador desde los resultados
-                Jugador j = new Jugador(
-                    rs.getInt("jugador_id"),
-                    rs.getString("nom"),
-                    rs.getString("cognoms"),
-                    Sexe.valueOf(rs.getString("sexe")),
-                    rs.getDate("data_naix"),
-                    rs.getString("idLegal"),
-                    rs.getString("IBAN"),
-                    rs.getString("adreça"),
-                    rs.getString("foto"),
-                    rs.getInt("any_fi_revisió_mèdica")
-                );
-
                 // Crear un objeto Membre con el jugador, el equipo y el tipo (titular o convidat)
-                Membre membre = new Membre(j, e, rs.getString("titular_convidat").charAt(0));
+                Membre membre = new Membre(rs.getInt("jugador_id"), e, rs.getString("titular_convidat").charAt(0));
                 membres.add(membre);
             }
             rs.close();
