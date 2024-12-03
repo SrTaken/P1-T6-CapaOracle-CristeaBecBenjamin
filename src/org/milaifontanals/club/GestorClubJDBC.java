@@ -19,6 +19,7 @@ import java.sql.Date;
 import java.util.ArrayList;
 import java.sql.Statement;
 import java.sql.ResultSet;
+import java.text.SimpleDateFormat;
 
 /**
  *
@@ -43,6 +44,8 @@ public class GestorClubJDBC implements IClubOracleBD{
     private PreparedStatement psInsertUsuari;
     private PreparedStatement psDelUsuari;
     private PreparedStatement psModificarUsuari;
+    
+    private static SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy");
 
     public GestorClubJDBC() throws GestorBDClub{
         this("clubDB.properties");
@@ -427,7 +430,7 @@ public class GestorClubJDBC implements IClubOracleBD{
         try {
             q = conn.createStatement();
             ResultSet rs = q.executeQuery("SELECT * FROM jugador");
-            while (rs.next()) {
+            while (rs.next()) {                
                 Jugador j = new Jugador(
                     rs.getInt("id"),
                     rs.getString("nom"),
