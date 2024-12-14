@@ -392,19 +392,21 @@ public class GestorClubJDBC implements IClubOracleBD{
     }
 
     @Override
-    public void esborrarMembre(int id_j) throws GestorBDClub {
+    public void esborrarMembre(int idJugador, int idEquip) throws GestorBDClub {
         if (psDelMembre == null) {
             try {
-                psDelMembre = conn.prepareStatement("DELETE FROM membre WHERE jugador_id = ?");
+                psDelMembre = conn.prepareStatement(
+                    "DELETE FROM membre WHERE jugador_id = ? AND equip_id = ?");
             } catch (SQLException ex) {
                 throw new GestorBDClub("Error en preparar sentència psDelMembre", ex);
             }
         }
         try {
-            psDelMembre.setInt(1, id_j);
+            psDelMembre.setInt(1, idJugador);
+            psDelMembre.setInt(2, idEquip);
             psDelMembre.executeUpdate();
         } catch (SQLException ex) {
-            throw new GestorBDClub("Error en esborrar membre", ex);
+            throw new GestorBDClub("Error en eliminar membre", ex);
         }
     }
 
@@ -468,9 +470,8 @@ public class GestorClubJDBC implements IClubOracleBD{
         if (psSelectMembresByEquip == null) {
             try {
                 psSelectMembresByEquip = conn.prepareStatement(
-                    "SELECT m.*, j.*, e.* FROM membre m " +
+                    "SELECT m.*, j.* FROM membre m " +
                     "JOIN jugador j ON m.jugador_id = j.id " +
-                    "JOIN equip e ON m.equip_id = e.id " +
                     "WHERE m.equip_id = ?");
             } catch (SQLException ex) {
                 throw new GestorBDClub("Error en preparar sentència psSelectMembresByEquip", ex);
@@ -482,24 +483,11 @@ public class GestorClubJDBC implements IClubOracleBD{
             ResultSet rs = psSelectMembresByEquip.executeQuery();
             
             while (rs.next()) {
-                Jugador jugador = new Jugador(
-                    rs.getInt("j.id"),
-                    rs.getString("j.nom"),
-                    rs.getString("j.cognoms"),
-                    Sexe.valueOf(rs.getString("j.sexe")),
-                    rs.getDate("j.data_naix"),
-                    rs.getString("j.idLegal"),
-                    rs.getString("j.IBAN"),
-                    rs.getString("j.adreça"),
-                    rs.getString("j.poblacio"),
-                    rs.getInt("j.cp"),
-                    rs.getString("j.foto"),
-                    rs.getInt("j.any_fi_revisió_mèdica")
-                );
+                Jugador jugador = obtenirJugador(rs.getInt("jugador_id"));
                 
                 Equip equip = obtenirEquip(e);
                 
-                char titularConvidat = rs.getString("m.titular_convidat").charAt(0);
+                char titularConvidat = rs.getString("titular_convidat").charAt(0);
                 Membre membre = new Membre(jugador, equip, titularConvidat);
                 
                 membres.add(membre);
@@ -565,9 +553,10 @@ public class GestorClubJDBC implements IClubOracleBD{
             try (ResultSet rs = psObtenirUsuari.executeQuery()) {
                 if (rs.next()) {
                     return new Usuari(
-                        rs.getString("login"),
+                        
                         rs.getString("nom"),
-                        rs.getString("password")
+                        rs.getString("password"),
+                            rs.getString("login")
                     );
                 } else {
                     throw new GestorBDClub("Usuari no trobat amb login: " + login);
@@ -1077,4 +1066,5 @@ public class GestorClubJDBC implements IClubOracleBD{
         temporadaCache.clear();
         categoriaCache.clear();
     }
+
 }
