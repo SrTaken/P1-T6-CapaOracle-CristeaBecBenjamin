@@ -612,6 +612,7 @@ public class GestorClubJDBC implements IClubOracleBD{
                     rs.getString("foto"),
                     rs.getInt("any_fi_revisió_mèdica")
                 );
+                //System.out.println(j);
                 jugadores.add(j);
             }
             rs.close();
@@ -884,6 +885,44 @@ public class GestorClubJDBC implements IClubOracleBD{
         }
     }
     
+    public List<Equip> obtenirEquipsJugador(int idJugador) throws GestorBDClub {
+        List<Equip> equips = new ArrayList<>();
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        try {
+            String sql = "SELECT e.* FROM equip e " +
+                        "INNER JOIN membre m ON e.id = m.equip_id " +
+                        "WHERE m.jugador_id = ?";
+            
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, idJugador);
+            rs = ps.executeQuery();
+            
+            while (rs.next()) {
+                Equip e = new Equip(
+                    rs.getInt("id"),
+                    rs.getString("nom"),
+                    Tipus.valueOf(rs.getString("tipus")),
+                    getCategoria(rs.getInt("id_cat")),
+                    getTemporada(rs.getInt("temporada"))
+                );
+                equips.add(e);
+            }     
+        } catch (SQLException | DataException ex) {
+            throw new GestorBDClub("Error al obtenir els equips del jugador: " + ex.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (ps != null) ps.close();
+            } catch (SQLException ex) {
+                throw new GestorBDClub("Error al tancar recursos", ex);
+            }
+        }
+        return equips;
+    }
+
+
     //FILES
     @Override
     public void exportJugadorsToXML(File file) throws GestorBDClub {
@@ -1059,6 +1098,96 @@ public class GestorClubJDBC implements IClubOracleBD{
         return value;
     }
     
+     public void exportJugadorsWithEquipsToCSV(File file) throws GestorBDClub {
+        try (PrintWriter writer = new PrintWriter(file)) {
+            writer.println("ID Legal,Nom,Cognom,Sexe,Data Naixement,IBAN,Adreça,Població,CP,Any Fi Revisió,Equips");
+            
+            List<Jugador> jugadors = obtenirLlistaJugador();
+            for (Jugador j : jugadors) {
+                StringBuilder sb = new StringBuilder();
+                
+                sb.append(escaparCSV(j.getIdLegal())).append(",");
+                sb.append(escaparCSV(j.getNom())).append(",");
+                sb.append(escaparCSV(j.getCognom())).append(",");
+                sb.append(j.getSexeString()).append(",");
+                sb.append(new SimpleDateFormat("dd/MM/yyyy").format(j.getData_naix())).append(",");
+                sb.append(escaparCSV(j.getIban())).append(",");
+                sb.append(escaparCSV(j.getAdresa())).append(",");
+                sb.append(escaparCSV(j.getPoblacio())).append(",");
+                sb.append(j.getCp()).append(",");
+                sb.append(j.getAny_fi_revisio_medica()).append(",");
+                
+                List<Equip> equipsJugador = obtenirEquipsJugador(j.getId());
+                if (!equipsJugador.isEmpty()) {
+                    StringBuilder equipos = new StringBuilder();
+                    for (Equip e : equipsJugador) {
+                        if (equipos.length() > 0) equipos.append(";");
+                        equipos.append(escaparCSV(e.getNom()))
+                              .append("(")
+                              .append(e.getTemporada().getYear())
+                              .append(")");
+                    }
+                    sb.append(escaparCSV(equipos.toString()));
+                }
+                
+                writer.println(sb.toString());
+            }
+        } catch (IOException ex) {
+            throw new GestorBDClub("Error al exportar jugadors amb equips a CSV: " + ex.getMessage());
+        }
+    }
+
+    public void exportJugadorsWithEquipsToXML(File file) throws GestorBDClub {
+        try {
+            Element root = new Element("jugadors");
+            Document doc = new Document(root);
+            
+            List<Jugador> jugadors = obtenirLlistaJugador();
+            for (Jugador j : jugadors) {
+                Element jugadorElement = new Element("jugador");
+                
+                jugadorElement.addContent(new Element("idLegal").setText(j.getIdLegal()));
+                jugadorElement.addContent(new Element("nom").setText(j.getNom()));
+                jugadorElement.addContent(new Element("cognom").setText(j.getCognom()));
+                jugadorElement.addContent(new Element("sexe").setText(j.getSexeString()));
+                jugadorElement.addContent(new Element("dataNaixement")
+                    .setText(new SimpleDateFormat("dd/MM/yyyy").format(j.getData_naix())));
+                jugadorElement.addContent(new Element("iban").setText(j.getIban()));
+                jugadorElement.addContent(new Element("adreca").setText(j.getAdresa()));
+                jugadorElement.addContent(new Element("poblacio").setText(j.getPoblacio()));
+                jugadorElement.addContent(new Element("cp").setText(String.valueOf(j.getCp())));
+                jugadorElement.addContent(new Element("anyFiRevisio")
+                    .setText(String.valueOf(j.getAny_fi_revisio_medica())));
+                
+                List<Equip> equipsJugador = obtenirEquipsJugador(j.getId());
+                if (!equipsJugador.isEmpty()) {
+                    Element equipsElement = new Element("equips");
+                    for (Equip e : equipsJugador) {
+                        Element equipElement = new Element("equip");
+                        equipElement.addContent(new Element("nom").setText(e.getNom()));
+                        equipElement.addContent(new Element("temporada")
+                            .setText(String.valueOf(e.getTemporada().getYear())));
+                        equipElement.addContent(new Element("tipus").setText(e.getTipus().toString()));
+                        equipElement.addContent(new Element("categoria")
+                            .setText(e.getCategoria().getCategoria()));
+                        equipsElement.addContent(equipElement);
+                    }
+                    jugadorElement.addContent(equipsElement);
+                }
+                
+                root.addContent(jugadorElement);
+            }
+            
+            XMLOutputter xmlOutput = new XMLOutputter();
+            xmlOutput.setFormat(Format.getPrettyFormat());
+            xmlOutput.output(doc, new FileWriter(file));
+            
+        } catch (Exception ex) {
+            throw new GestorBDClub("Error al exportar jugadors amb equips a XML: " + ex.getMessage());
+        }
+    }
+
+
     private void clearCaches() {
         jugadorCache.clear();
         membreCache.clear();
