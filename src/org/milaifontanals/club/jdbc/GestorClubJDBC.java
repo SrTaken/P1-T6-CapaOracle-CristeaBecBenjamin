@@ -820,7 +820,7 @@ public class GestorClubJDBC implements IClubOracleBD{
     private Equip obtenirEquip(int id) throws GestorBDClub, SQLException {
         if (psSelectEquip == null) {
             psSelectEquip = conn.prepareStatement(
-                "SELECT * FROM equip WHERE id = ?");
+                "SELECT * FROM equip WHERE id = ? order by id_cat");
         }
         
         psSelectEquip.setInt(1, id);
